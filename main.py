@@ -17,7 +17,7 @@ app = FastAPI(
     version="V1.0.0",
     # debug 是否再返回结果里面显示错误异常信息
     debug=False,
-    docs_url=None,
+    docs_url=docs.DOCS_URL,
     redoc_url=None,
     openapi_tags=docs.TAGS_METADATA,
     servers=docs.SERVERS

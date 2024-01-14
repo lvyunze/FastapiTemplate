@@ -1,7 +1,8 @@
 from fastapi import APIRouter
 from apps.ext.jwtAuth import auth_handler
 from apps.modules.user.schemas.user import AuthDetails
-from apps.ext.sqlalchemy.model import User
+# from apps.ext.sqlalchemy.model import User
+
 from fastapi_extend import pagenator, serializer
 from apps.response.json_response import resp, resp_error
 from fastapi import Depends

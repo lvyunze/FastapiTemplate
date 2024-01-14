@@ -59,4 +59,8 @@ class AuthHandler:
         return self.decode_token(auth.credentials)
 
 
-auth_handler = AuthHandler()
+# auth_handler = AuthHandler()
+
+# if __name__ == '__main__':
+#     password_hash = auth_handler.get_password_hash("123456")
+#     print(password_hash)

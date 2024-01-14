@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from sqlalchemy import select
 from apps.ext.jwtAuth import auth_handler
 from apps.modules.user.schemas.user import AuthDetails
-from apps.ext.sqlalchemy.model import User
+# from apps.ext.sqlalchemy.model import User
 from fastapi_extend import PageNumberPagination
 from apps.ext.sqlalchemy import db_connect
 from apps.modules.user.schemas.user import GetUser, UserSer

@@ -8,16 +8,18 @@ Desc : 全局app，用于初始化相关配置
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
 
+from apps.modules.user.api.v1 import register_router_v1
+
 
 class Client:
 
     def __init__(self, app: FastAPI):
         self.app = app
         self.register_global_exception()
-        # self.register_global_cors()  # 全局配置跨域设置
+        self.register_global_cors()  # 全局配置跨域设置
         self.register_global_middleware()  # 配置中间件
-        self.register_global_include_router()  # 批量导入注册路由
-
+        # self.register_global_include_router()  # 批量导入注册路由
+        register_router_v1(app) # 单独注册路由
 
     def register_global_cors(self):
         """

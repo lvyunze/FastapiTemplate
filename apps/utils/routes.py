@@ -5,6 +5,7 @@ Author :lvyunze
 Time : 2022/5/11 17:57
 Desc : 扫描模块下的所有路由
 """
+import platform
 from importlib import import_module
 from os.path import dirname, realpath
 from glob import glob
@@ -24,6 +25,9 @@ class RouterHelper(object):
         :return:file_path
         """
         file_path = [each for api_path in self.dirs_list for each in glob(api_path+'/*.py')]
+        # windows下的路径需要转换
+        if platform.system() == "Windows":
+            file_path = [each.replace('\\', '.') for api_path in self.dirs_list for each in glob(api_path+'/*.py')]
         file_path = [each for each in file_path if '__' not in each]
         file_path = [each.replace('.py', '').replace('/', '.') for each in file_path]
         file_path = [each[each.find('apps'):] for each in file_path]
@@ -39,6 +43,7 @@ class RouterHelper(object):
         router_list = []
         for each in api_file:
             params = import_module(each['name'])
+
             try:
                 cls = getattr(params, "router")
                 router_list.append({

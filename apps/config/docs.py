@@ -5,6 +5,7 @@ Author : lvyunze
 Time : 2024/01/08 11:18
 Desc : 
 """
+import os
 from functools import lru_cache
 from pydantic import BaseSettings
 import pprint
@@ -36,6 +37,9 @@ class DocsSettings(BaseSettings):
         {"url": "https://xx.xx.com", "description": "线上测试环境"},
         {"url": "https://xx2.xx2.com", "description": "线上生产环境"},
     ]
+    # 项目根目录
+    ROOT_PATH = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+
 
 
 @lru_cache()

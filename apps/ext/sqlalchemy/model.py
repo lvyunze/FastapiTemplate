@@ -38,10 +38,10 @@ def to_dict(self):
 Base.to_dict = to_dict
 
 
-class User(Base):
-    __tablename__ = 'user'
-    id = Column(Integer, primary_key=True)
-    username = Column(VARCHAR(16), comment='用户名')
-    password = Column(VARCHAR(16), comment='密码')
-    update_time = Column(DateTime, server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
+# class User(Base):
+#     __tablename__ = 'user'
+#     id = Column(Integer, primary_key=True)
+#     username = Column(VARCHAR(16), comment='用户名')
+#     password = Column(VARCHAR(16), comment='密码')
+#     update_time = Column(DateTime, server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
 
