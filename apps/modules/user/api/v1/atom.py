@@ -6,11 +6,12 @@ from apps.ext.sqlalchemy.models import Atom, RoleAtom, MenuAtom
 from apps.modules.user.schemas import GetPageParams, GetParams
 from apps.modules.user.schemas.atom import GetAtom, AtomSer
 from apps.utils.pagination import Pagination
+from apps.utils.response import Resp
 
 # 创建路由
 router = APIRouter(tags=["原子管理"])
 
-@router.post('/add', summary="添加原子")
+@router.post('/add', summary="添加原子", response_model=Resp)
 async def add(_atom: GetAtom):
     """
     添加原子
@@ -34,14 +35,10 @@ async def add(_atom: GetAtom):
             for menuId in menuIds:
                 atomMenu = MenuAtom(atom_id=atom.id, menu_id=menuId, create_user='', update_user='')
                 session.add(atomMenu)
-        resp = {
-            'code': 200,
-            "message": "原子控制添加成功",
-            "data": {}
-        }
-        return resp
 
-@router.post('/deleteById/<string:id>', summary="删除原子")
+        return Resp(message="添加原子成功")
+
+@router.post('/deleteById/<string:id>', summary="删除原子", response_model=Resp)
 async def deleteById(id):
     """
     删除原子
@@ -56,14 +53,11 @@ async def deleteById(id):
         await session.execute(select(MenuAtom).where(MenuAtom.atom_id == id).delete())
         # 删除原子
         await session.execute(select(Atom).where(Atom.id == id).delete())
-        resp = {
-            'code': 200,
-            "message": "原子控制删除成功",
-            "data": {}
-        }
-        return resp
 
-@router.post('/updateById/<string:id>', summary="更新原子")
+        return Resp(message="删除原子成功")
+
+
+@router.post('/updateById/<string:id>', summary="更新原子", response_model=Resp)
 async def updateById(id, _atom: GetAtom):
     """
     更新原子
@@ -96,14 +90,10 @@ async def updateById(id, _atom: GetAtom):
             for menuId in menuIds:
                 atomMenu = MenuAtom(atom_id=id, menu_id=menuId, create_user='', update_user='')
                 session.add(atomMenu)
-        resp = {
-            'code': 200,
-            "message": "原子按钮修改成功",
-            "data": {}
-        }
-        return resp
 
-@router.get('/findById/<string:id>', summary="根据id查询原子")
+        return Resp(message="更新原子成功")
+
+@router.get('/findById/<string:id>', summary="根据id查询原子", response_model=Resp)
 async def findById(id):
     """
     根据id查询原子
@@ -114,15 +104,11 @@ async def findById(id):
     async with db_connect.async_session() as session:
         # 查询原子
         atom = await session.get(Atom, id)
-        data = AtomSer.dump(atom)
-        resp = {
-            'code': 200,
-            "message": "原子按钮查询成功",
-            "data": data
-        }
-        return resp
+        atomSer = AtomSer.dump(atom)
 
-@router.get('/findList', summary="分页查询原子列表")
+        return Resp(data=atomSer, message="获取原子信息成功")
+
+@router.get('/findList', summary="分页查询原子列表", response_model=Resp)
 async def findList(params: GetPageParams=Depends()):
     """
     分页查询原子列表
@@ -136,17 +122,14 @@ async def findList(params: GetPageParams=Depends()):
         atomList = page_data['list']
         atomList = AtomSer.dump(atomList, many=True)
         total = page_data['total']
-        resp = {
-            'code': 200,
-            "message": "获取原子列表成功",
-            "data": {
-                "atomList": atomList,
-                "total": total
-            }
-        }
-        return resp
 
-@router.get('/findAll', summary="查询所有原子")
+        data = {
+            "atomList": atomList,
+            "total": total
+        }
+        return Resp(data=data,message="获取原子列表成功")
+
+@router.get('/findAll', summary="查询所有原子", response_model=Resp)
 async def findAll(params: GetParams=Depends()):
     """
     查询所有原子
@@ -155,10 +138,6 @@ async def findAll(params: GetParams=Depends()):
     async with db_connect.async_session() as session:
         page_data = await Pagination(params, Atom, all=True).get_page(session)
         atomList = page_data['list']
-        atomList = AtomSer.dump(atomList, many=True)
-        resp = {
-            'code': 200,
-            "message": "获取菜单列表成功",
-            "data": atomList
-        }
-        return resp
+        atomSer = AtomSer.dump(atomList, many=True)
+
+        return Resp(data=atomSer,message="获取原子全部信息成功")

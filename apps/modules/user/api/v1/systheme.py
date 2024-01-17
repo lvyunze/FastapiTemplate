@@ -6,11 +6,12 @@ from apps.ext.sqlalchemy.models import Systheme
 from apps.modules.user.schemas import GetPageParams
 from apps.modules.user.schemas.systheme import GetSystheme, SysthemeSer
 from apps.utils.pagination import Pagination
+from apps.utils.response import Resp
 
 # 创建路由
 router = APIRouter(tags=["主题管理"])
 
-@router.post('/addOne', summary="添加主题")
+@router.post('/addOne', summary="添加主题", response_model=Resp)
 async def addOne(_systheme: GetSystheme):
     """
     添加主题
@@ -22,14 +23,9 @@ async def addOne(_systheme: GetSystheme):
         systheme = Systheme(**_systheme.dict())
         session.add(systheme)
 
-        resp = {
-            'code': 200,
-            "message": "添加主题成功",
-            "data": {}
-        }
-        return resp
+        return Resp(message="添加主题成功")
 
-@router.post('/deleteById/<string:id>', summary="删除主题")
+@router.post('/deleteById/<string:id>', summary="删除主题", response_model=Resp)
 async def deleteById(id):
     """
     删除主题
@@ -40,14 +36,10 @@ async def deleteById(id):
     async with db_connect.async_session() as session:
         # 删除主题
         await session.execute(select(Systheme).where(Systheme.id == id).delete())
-        resp = {
-            'code': 200,
-            "message": "系统基础配置删除成功",
-            "data": {}
-        }
-        return resp
 
-@router.post('/updateById/<string:id>', summary="更新主题")
+        return Resp(message="删除主题成功")
+
+@router.post('/updateById/<string:id>', summary="更新主题", response_model=Resp)
 async def updateById(id,_systheme: GetSystheme):
     """
     更新主题
@@ -60,15 +52,11 @@ async def updateById(id,_systheme: GetSystheme):
         systheme.id = id
         # 更新systheme
         await session.merge(systheme)
-        data = SysthemeSer.dump(systheme)
-        resp = {
-            'code': 200,
-            "message": "系统基础配置更新成功",
-            "data": data
-        }
-        return resp
+        systhemeSer = SysthemeSer.dump(systheme)
 
-@router.get('/findById/<string:id>', summary="根据id查询主题")
+        return Resp(data=systhemeSer, message="更新主题成功")
+
+@router.get('/findById/<string:id>', summary="根据id查询主题", response_model=Resp)
 async def findById(id):
     """
     根据id查询主题
@@ -79,15 +67,11 @@ async def findById(id):
     async with db_connect.async_session() as session:
         # 查询主题
         systheme = await session.get(Systheme, id)
-        data = SysthemeSer.dump(systheme)
-        resp = {
-            'code': 200,
-            "message": "系统基础配置查询成功",
-            "data": data
-        }
-        return resp
+        systhemeSer = SysthemeSer.dump(systheme)
 
-@router.get('/findList', summary="分页查询主题列表")
+        return Resp(data=systhemeSer, message="查询主题成功")
+
+@router.get('/findList', summary="分页查询主题列表", response_model=Resp)
 async def findList(params: GetPageParams=Depends()):
     """
     分页查询主题列表
@@ -98,17 +82,14 @@ async def findList(params: GetPageParams=Depends()):
         systhemeList = page_data['list']
         systhemeList = SysthemeSer.dump(systhemeList, many=True)
         total = page_data['total']
-        resp = {
-            'code': 200,
-            "message": "获取系统信息列表成功",
-            "data": {
-                "systhemeList": systhemeList,
-                "total": total
-            }
-        }
-        return resp
 
-@router.get('/findAll', summary="查询所有主题")
+        data = {
+            "systhemeList": systhemeList,
+            "total": total
+        }
+        return Resp(data=data, message="分页查询主题列表成功")
+
+@router.get('/findAll', summary="查询所有主题", response_model=Resp)
 async def findAll(params: GetPageParams=Depends()):
     """
     查询所有主题
@@ -118,11 +99,8 @@ async def findAll(params: GetPageParams=Depends()):
         page_data = await Pagination(params, Systheme, all=True).get_page(session)
         systhemeList = page_data['list']
         systhemeList = SysthemeSer.dump(systhemeList, many=True)
-        resp = {
-            'code': 200,
-            "message": "获取系统信息列表成功",
-            "data": {
-                "systhemeList": systhemeList,
-            }
+
+        data = {
+            "systhemeList": systhemeList,
         }
-        return resp
+        return Resp(data=data, message="查询所有主题成功")
