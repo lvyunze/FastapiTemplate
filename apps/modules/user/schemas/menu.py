@@ -1,9 +1,9 @@
 from typing import List
-from fastapi_extend import model2schema
 from pydantic import validator, Field
 
 from apps.ext.sqlalchemy.models import Menu
 from apps.modules.user.schemas.atom import AtomSer
+from apps.utils.serializer import model2schema
 
 
 class MenuSer(model2schema(Menu, exclude=["id"])):

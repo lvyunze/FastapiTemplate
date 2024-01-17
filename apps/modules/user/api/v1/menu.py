@@ -6,11 +6,12 @@ from apps.ext.sqlalchemy.models import Menu
 from apps.modules.user.schemas import GetPageParams, GetParams
 from apps.modules.user.schemas.menu import MenuSer
 from apps.utils.pagination import Pagination
+from apps.utils.response import Resp
 
 # 创建路由
 router = APIRouter(tags=["菜单管理"])
 
-@router.post('/addOne', summary="添加菜单")
+@router.post('/addOne', summary="添加菜单", response_model=Resp)
 async def addOne(menu: MenuSer):
     """
     添加菜单
@@ -24,15 +25,11 @@ async def addOne(menu: MenuSer):
         await session.commit()
         await session.refresh(menu)
         # 返回添加的菜单信息
-        data = MenuSer.dump(menu)
-        resp = {
-            'code': 200,
-            "message": "添加菜单成功",
-            "data": data
-        }
-        return resp
+        menuSer = MenuSer.dump(menu)
 
-@router.post('/deleteById/<string:id>', summary="删除菜单")
+        return Resp(data=menuSer,message="添加菜单成功")
+
+@router.post('/deleteById/<string:id>', summary="删除菜单", response_model=Resp)
 async def deleteById(id):
     """
     删除菜单
@@ -43,14 +40,10 @@ async def deleteById(id):
     async with db_connect.async_session() as session:
         # 删除菜单
         await session.execute(select(Menu).where(Menu.id == id).delete())
-        resp = {
-            'code': 200,
-            "message": "菜单删除成功",
-            "data": {}
-        }
-        return resp
 
-@router.post('/updateById/<string:id>', summary="更新菜单")
+        return Resp(message="删除菜单成功")
+
+@router.post('/updateById/<string:id>', summary="更新菜单", response_model=Resp)
 async def updateById(id,menu: MenuSer):
     """
     更新菜单
@@ -63,14 +56,10 @@ async def updateById(id,menu: MenuSer):
         menu.id = id
         # 更新menu
         await session.merge(menu)
-        resp = {
-            'code': 200,
-            "message": "菜单修改成功",
-            "data": {}
-        }
-        return resp
 
-@router.get('/findById/<string:id>', summary="根据id查询菜单")
+        return Resp(message="更新菜单成功")
+
+@router.get('/findById/<string:id>', summary="根据id查询菜单", response_model=Resp)
 async def findById(id):
     """
     根据id查询菜单
@@ -80,15 +69,11 @@ async def findById(id):
     """
     async with db_connect.async_session() as session:
         menu = await session.get(Menu, id)
-        data = MenuSer.dump(menu)
-        resp = {
-            'code': 200,
-            "message": "获取菜单信息成功",
-            "data": data
-        }
-        return resp
+        menuSer = MenuSer.dump(menu)
 
-@router.get('/findList', summary="分页查询菜单列表")
+        return Resp(data=menuSer,message="获取菜单信息成功")
+
+@router.get('/findList', summary="分页查询菜单列表", response_model=Resp)
 async def findList(params: GetPageParams=Depends()):
     """
     分页查询菜单列表
@@ -99,17 +84,14 @@ async def findList(params: GetPageParams=Depends()):
         menuList = page_data['list']
         menuList = MenuSer.dump(menuList, many=True)
         total = page_data['total']
-        resp = {
-            'code': 200,
-            "message": "获取菜单列表成功",
-            "data": {
-                "menuList": menuList,
-                "total": total
-            }
-        }
-        return resp
 
-@router.get('/findAll', summary="查询所有菜单")
+        data = {
+            "menuList": menuList,
+            "total": total
+        }
+        return Resp(data=data,message="获取菜单列表成功")
+
+@router.get('/findAll', summary="查询所有菜单",response_model=Resp)
 async def findAll(params: GetParams=Depends()):
     """
     查询所有菜单
@@ -118,10 +100,6 @@ async def findAll(params: GetParams=Depends()):
     async with db_connect.async_session() as session:
         page_data = await Pagination(params, Menu, all=True).get_page(session)
         menuList = page_data['list']
-        menuList = MenuSer.dump(menuList, many=True)
-        resp = {
-            'code': 200,
-            "message": "获取菜单列表成功",
-            "data": menuList
-        }
-        return resp
+        menuSer = MenuSer.dump(menuList, many=True)
+
+        return Resp(data=menuSer,message="获取菜单列表成功")

@@ -5,14 +5,17 @@ from fastapi_extend import PageNumberPagination, model2schema
 from sqlalchemy import select
 from apps.ext.sqlalchemy import db_connect
 from apps.ext.sqlalchemy.models import Role, RoleMenu, UserRole
+from apps.modules.user.schemas import GetPageParams, GetParams
 from apps.modules.user.schemas.role import RoleSer, GetRoleQr, GetRole
 from apps.response.json_response import resp
+from apps.utils.pagination import Pagination
+from apps.utils.response import Resp
 
 # 创建路由
 router = APIRouter(tags=["角色管理"])
 
 
-@router.get('/findById/<string:id>',summary="查询角色")
+@router.get('/findById/<string:id>',summary="查询角色",response_model=Resp)
 async def findById(id):
     """
     查询角色
@@ -22,17 +25,13 @@ async def findById(id):
     """
     async with db_connect.async_session() as session:
         role = await session.get(Role, id)
-        data = RoleSer.dump(role)
-        resp = {
-            'code': 200,
-            "message": "获取角色信息成功",
-            "data": data
-        }
-        return resp
+        roleSer = RoleSer.dump(role)
+
+        return Resp(data=roleSer,message="获取角色信息成功")
 
 
-@router.get('/findList',summary="查询角色列表")
-async def findList(params: GetRoleQr = Depends()):
+@router.get('/findList',summary="查询角色列表",response_model=Resp)
+async def findList(params: GetPageParams = Depends()):
     """
     查询角色列表
     Args:
@@ -40,47 +39,33 @@ async def findList(params: GetRoleQr = Depends()):
     Returns: 角色列表
     """
     async with db_connect.async_session() as session:
-        paginator = PageNumberPagination(
-            params,
-            Role,
-            RoleSer,
-            exclude={"col_id"},
-        )
-        query = paginator.get_queryset()
-        if params.col_id:
-            query = query.where(Role.id == params.col_id)
-        data = await paginator.paginate_query(query, session)
-        resp = {
-            'code': 200,
-            "message": "获取角色列表成功",
-            "data": {
-                "roleList": data["list"],
-                "total": data["total"]
-            }
-        }
-        return resp
+        page_data = await Pagination(params, Role).get_page(session)
+        roleList = page_data['list']
+        roleList = RoleSer.dump(roleList, many=True)
+        total = page_data['total']
 
-@router.get('/findAll',summary="查询所有角色")
-async def findAll():
+        data = {
+            "roleList": roleList,
+            "total": total
+        }
+        return Resp(data=data,message="获取角色列表成功")
+
+@router.get('/findAll',summary="查询所有角色",response_model=Resp)
+async def findAll(params: GetParams=Depends()):
     """
     查询所有角色
     Returns: 所有角色
     """
     async with db_connect.async_session() as session:
-        query = select(Role)
-        query_result = await session.execute(query)
-        objects = query_result.scalars()
-        data = RoleSer.dump(objects, many=True)
-        resp = {
-            'code': 200,
-            "message": "获取角色全部信息成功",
-            "data": {
-                "roleList": data
-            }
-        }
-        return resp
+        page_data = await Pagination(params, Role, all=True).get_page(session)
+        roleList = page_data['list']
 
-@router.post('/addOne',summary="添加角色")
+        data = {
+            "roleList": roleList,
+        }
+        return Resp(data=data,message="获取角色全部信息成功")
+
+@router.post('/addOne',summary="添加角色",response_model=Resp)
 async def addOne(role: GetRole):
     """
     添加角色
@@ -94,15 +79,11 @@ async def addOne(role: GetRole):
         await session.commit()
         await session.refresh(role)
         # 返回添加的角色信息
-        data = RoleSer.dump(role)
-        resp = {
-            'code': 200,
-            "message": "添加角色成功",
-            "data": data
-        }
-        return resp
+        roleSer = RoleSer.dump(role)
 
-@router.post('/updateById/<string:id>',summary="更新角色")
+        return Resp(data=roleSer,message="添加角色成功")
+
+@router.post('/updateById/<string:id>',summary="更新角色",response_model=Resp)
 async def updateById(id,role: RoleSer):
     """
     更新角色
@@ -115,14 +96,10 @@ async def updateById(id,role: RoleSer):
         role.id = id
         # 更新role
         await session.merge(role)
-        resp = {
-            'code': 200,
-            "message": "更新角色成功",
-            "data": {}
-        }
-        return resp
 
-@router.post('/deleteRole/<string:id>',summary="删除角色")
+        return Resp(message="更新角色成功")
+
+@router.post('/deleteRole/<string:id>',summary="删除角色",response_model=Resp)
 async def deleteRole(id):
     """
     删除角色
@@ -138,9 +115,5 @@ async def deleteRole(id):
         # 删除角色
         role = await session.get(Role, id)
         await session.delete(role)
-        resp = {
-            'code': 200,
-            "message": "删除角色成功",
-            "data": {}
-        }
-        return resp
+
+        return Resp(message="删除角色成功")

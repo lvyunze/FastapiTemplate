@@ -1,6 +1,5 @@
-from fastapi_extend import model2schema
+from apps.utils.serializer import model2schema
 from pydantic import validator
-
 from apps.ext.sqlalchemy.models import Systheme
 
 class GetSystheme(model2schema(Systheme, exclude=["id"])):
@@ -13,3 +12,4 @@ class SysthemeSer(model2schema(Systheme)):
     @validator("create_time", allow_reuse=True)
     def create_time(cls, v):
         return str(v)
+    pass

@@ -1,9 +1,9 @@
 from typing import Optional, List
-
-from fastapi_extend import model2schema
-from pydantic import validator, BaseModel
+from pydantic import validator
 
 from apps.ext.sqlalchemy.models import Atom
+from apps.utils.serializer import model2schema
+
 
 class GetAtom(model2schema(Atom, exclude=["id"])):
     roleIds: Optional[List[str]] = None
@@ -16,3 +16,4 @@ class AtomSer(model2schema(Atom)):
     @validator("create_time", allow_reuse=True)
     def create_time(cls, v):
         return str(v)
+    pass
