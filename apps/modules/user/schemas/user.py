@@ -12,17 +12,19 @@ class AuthDetails(BaseModel):
     username: str
     password: str
 
+class UserRegister(BaseModel):
+    """
+    用户注册信息
+    """
+    name: Optional[str] = None
+    username: str
+    password: str
 
-class GetUser(BaseModel):
+class GetUser(model2schema(User,exclude=["id"])):
     """
     接收用户查询参数
     """
-    col_id: int = None
-    username: str = None
-    page: int = 1
-    pageSize: int = 100
-    sort_field: str = 'update_time'
-    order_by: str = 'desc'
+    roleIds: Optional[List[str]] = None
 
 
 

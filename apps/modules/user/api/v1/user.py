@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 from fastapi import APIRouter, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
@@ -8,22 +8,22 @@ from starlette import status
 
 from apps.ext.sqlalchemy.models import User, Systheme, Menu, RoleMenu, Role, UserRole, Atom, MenuAtom
 from apps.modules.user.schemas import GetPageParams, GetParams
-from apps.modules.user.schemas.atom import AtomSer
 from apps.modules.user.schemas.menu import MenuSer
 from apps.modules.user.schemas.role import RoleSer
 from apps.modules.user.schemas.systheme import SysthemeSer
-from apps.modules.user.schemas.user import UserForm, UserListSer, AuthDetails
-from fastapi_extend import PageNumberPagination
+from apps.modules.user.schemas.user import UserForm, UserListSer, AuthDetails, GetUser, UserRegister
 from apps.ext.sqlalchemy import db_connect
-from apps.modules.user.schemas.user import GetUser, UserSer
+from apps.modules.user.schemas.user import UserSer
 from fastapi import Depends
 
-from apps.utils.crud import getRelationshipData
+from apps.utils.crud import getRelationshipData, setDefaultData
 from apps.utils.pagination import Pagination
 from apps.utils.response import Resp
-from apps.utils.security import authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token, get_current_user, Token
+from apps.utils.security import authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token, get_current_user, \
+    Token, get_current_user_id, get_password_hash
 
 router = APIRouter(tags=["用户管理"])
+
 
 @router.post('/login', summary="用户登录", response_model=Resp)
 async def login(auth_details: AuthDetails):
@@ -50,11 +50,29 @@ async def login(auth_details: AuthDetails):
         data = {
             "token": token
         }
-        return Resp(data=data,message="登录成功")
+        return Resp(data=data, message="登录成功")
 
+@router.post('/register', summary="用户注册", response_model=Resp)
+async def register(_user: UserRegister):
+    """
+    用户注册
+    Args:
+        _user: 用户注册信息
+    Returns: 注册结果
+    """
+    _user = _user.dict()
+    async with db_connect.async_session() as session:
+        user = User(**_user)
+        user.password = get_password_hash(user.password)
+        setDefaultData(user, '')
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
 
-@router.post('/docsLogin',include_in_schema=False, summary="文档登录")
-async def docsLogin(auth_details: OAuth2PasswordRequestForm=Depends()):
+        return Resp(message="注册成功")
+
+@router.post('/docsLogin', include_in_schema=False, summary="文档登录")
+async def docsLogin(auth_details: OAuth2PasswordRequestForm = Depends()):
     """
     文档登录
     Args:
@@ -76,37 +94,17 @@ async def docsLogin(auth_details: OAuth2PasswordRequestForm=Depends()):
         token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
         return Token(access_token=token, token_type="bearer")
 
-@router.post('/getUser', summary="获取用户列表")
-async def getUser(params: GetUser):
-    """
-    获取用户列表
-    Args:
-        params: 查询参数
-    Returns: 用户列表
-    """
-    async with db_connect.async_session() as session:
-        paginator = PageNumberPagination(
-            params,
-            User,
-            UserSer,
-            exclude={"col_id"},
-        )
-        query = paginator.get_queryset()
-        if params.col_id:
-            query = query.where(User.id == params.col_id)
-        data = await paginator.paginate_query(query, session)
-        return data
 
-
-@router.post('/info', summary="获取用户详细信息",response_model=Resp)
-async def info():
+@router.post('/info', summary="获取用户详细信息", response_model=Resp)
+async def info(current_user_id: User = Depends(get_current_user_id)):
     # 用户名称
     # username = _user.get("userName")
-    username = 'admin'
+    # username = 'admin'
     async with db_connect.async_session() as session:
         # 查询用户信息
-        result = await session.execute(select(User).where(User.username == username))
-        user = result.scalars().first()
+        # result = await session.execute(select(User).where(User.username == username))
+        # user = result.scalars().first()
+        user = await session.get(User, current_user_id)
         userInfo = UserSer.dump(user)
         # 查询主题信息
         systheme = await getRelationshipData(session, user, Systheme)
@@ -124,10 +122,11 @@ async def info():
             "systhemeInfo": systhemeInfo,
             "menuList": menuList
         }
-        return Resp(data=data,message="获取用户详细成功")
+        return Resp(data=data, message="获取用户详细成功")
 
-@router.post('/addOne', summary="新增用户",response_model=Resp)
-async def addOne(_user: UserForm):
+
+@router.post('/addOne', summary="新增用户", response_model=Resp)
+async def addOne(_user: GetUser, current_user_id: User = Depends(get_current_user_id)):
     """
     新增用户
     Args:
@@ -136,21 +135,30 @@ async def addOne(_user: UserForm):
     """
     _user = _user.dict()
     roleIds = _user.pop("roleIds")
-
+    # print("current_user_id ==> ", current_user_id)
     async with db_connect.async_session() as session:
         user = User(**_user)
+        user.password = get_password_hash(user.password)
+        # 设置默认创建人、更新人、创建时间、更新时间
+        setDefaultData(user, current_user_id)
+
         session.add(user)
         await session.commit()
         await session.refresh(user)
+        # 删除用户角色关联表
+        await session.execute(select(UserRole).where(UserRole.user_id == user.id).delete())
+        await session.commit()
         # 添加用户角色关系
-        userRoleList = [UserRole(user_id=user.id, role_id=roleId, create_user='', update_user='') for roleId in roleIds]
+        userRoleList = [UserRole(user_id=user.id, role_id=roleId,
+                                 create_user=current_user_id, update_user=current_user_id,
+                                 create_time=datetime.now, update_time=datetime.now) for roleId in roleIds]
         session.add_all(userRoleList)
 
         return Resp(message="用户添加成功")
 
 
-@router.post('/deleteById/<string:id>', summary="删除用户",response_model=Resp)
-async def deleteById(id):
+@router.post('/deleteById/{id}', summary="删除用户", response_model=Resp)
+async def deleteById(id: str, current_user_id: str = Depends(get_current_user_id)):
     """
     删除用户
     Args:
@@ -166,8 +174,8 @@ async def deleteById(id):
         return Resp(message="用户删除成功")
 
 
-@router.post('/updateById/<string:id>', summary="更新用户",response_model=Resp)
-async def updateById(id, _user: UserForm):
+@router.post('/updateById/{id}', summary="更新用户", response_model=Resp)
+async def updateById(id: str, _user: UserForm, current_user_id: str = Depends(get_current_user_id)):
     """
     更新用户
     Args:
@@ -178,19 +186,23 @@ async def updateById(id, _user: UserForm):
     _user = _user.dict()
     roleIds = _user.pop("roleIds")
     async with db_connect.async_session() as session:
+        user = User(**_user)
+        setDefaultData(user, current_user_id)
         # 更新用户
         await session.execute(select(User).where(User.id == id).update(_user))
         # 删除用户角色关联表
         await session.execute(select(UserRole).where(UserRole.user_id == id).delete())
         # 添加用户角色关系
-        userRoleList = [UserRole(user_id=id, role_id=roleId, create_user='', update_user='') for roleId in roleIds]
+        userRoleList = [UserRole(user_id=id, role_id=roleId,
+                                 create_user=current_user_id, update_user=current_user_id,
+                                 create_time=datetime.now, update_time=datetime.now) for roleId in roleIds]
         session.add_all(userRoleList)
 
         return Resp(message="用户信息修改成功")
 
 
-@router.get('/findById/<string:id>', summary="根据id查询用户",response_model=Resp)
-async def findById(id):
+@router.get('/findById/{id}', summary="根据id查询用户", response_model=Resp)
+async def findById(id: str, current_user_id: str = Depends(get_current_user_id)):
     """
     根据id查询用户
     Args:
@@ -207,11 +219,11 @@ async def findById(id):
         userSer.roleList = RoleSer.dump(roleList, many=True)
         userSer.systhemeInfo = SysthemeSer.dump(await getRelationshipData(session, user, Systheme))
 
-        return Resp(data=userSer,message="获取用户信息成功")
+        return Resp(data=userSer, message="获取用户信息成功")
 
 
-@router.get('/findList', summary="查询用户列表",response_model=Resp)
-async def findList(params: GetPageParams=Depends()):
+@router.get('/findList', summary="查询用户列表", response_model=Resp)
+async def findList(params: GetPageParams = Depends(), current_user_id: str = Depends(get_current_user_id)):
     """
     查询用户列表
     Returns: 用户列表
@@ -228,7 +240,7 @@ async def findList(params: GetPageParams=Depends()):
                 if 'role' in relations or '*' in relations:
                     roleList = await getRelationshipData(session, user, Role, UserRole)
                     userSer.roleIds = [role.id for role in roleList]
-                    userSer.roleList = RoleSer.dump(roleList,many=True)
+                    userSer.roleList = RoleSer.dump(roleList, many=True)
                 if 'systheme' in relations or '*' in relations:
                     userSer.systhemeInfo = SysthemeSer.dump(await getRelationshipData(session, user, Systheme))
                 userSerList.append(userSer)
@@ -237,16 +249,17 @@ async def findList(params: GetPageParams=Depends()):
             "userList": userSerList,
             "total": total
         }
-        return Resp(data=data,message="获取用户列表成功")
+        return Resp(data=data, message="获取用户列表成功")
 
-@router.get('/findAll', summary="查询所有用户",response_model=Resp)
-async def findAll(params: GetParams=Depends()):
+
+@router.get('/findAll', summary="查询所有用户", response_model=Resp)
+async def findAll(params: GetParams = Depends(), current_user_id: str = Depends(get_current_user_id)):
     """
     查询所有用户
     Returns: 用户列表
     """
     async with db_connect.async_session() as session:
-        page_data = await Pagination(params, User,all=True).get_page(session)
+        page_data = await Pagination(params, User, all=True).get_page(session)
         userList = page_data['list']
         userSerList = []
         relations = params.relations.split(',') if params.relations else []
@@ -256,7 +269,7 @@ async def findAll(params: GetParams=Depends()):
                 if 'role' in relations or '*' in relations:
                     roleList = await getRelationshipData(session, user, Role, UserRole)
                     userSer.roleIds = [role.id for role in roleList]
-                    userSer.roleList = RoleSer.dump(roleList,many=True)
+                    userSer.roleList = RoleSer.dump(roleList, many=True)
                 if 'systheme' in relations or '*' in relations:
                     userSer.systhemeInfo = SysthemeSer.dump(await getRelationshipData(session, user, Systheme))
                 userSerList.append(userSer)
@@ -264,7 +277,7 @@ async def findAll(params: GetParams=Depends()):
         data = {
             "userList": userSerList
         }
-        return Resp(data=data,message="查询所有用户成功")
+        return Resp(data=data, message="查询所有用户成功")
 
 
 async def getMenuTree(session: AsyncSession, menuList, parentId):

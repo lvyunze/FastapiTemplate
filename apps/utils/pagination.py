@@ -10,6 +10,7 @@ class Pagination:
     """
     分页器，用于分页查询
     """
+
     def __init__(self, query_model: BaseModel, model, all=False):
         """
         Args:
@@ -20,18 +21,18 @@ class Pagination:
         self.model = model
         self.query_model = query_model
         params = self.query_model.dict()
-        self.query_params = params # 查询参数
-        self.page = params.get('page') # 当前页码
-        self.pageSize = params.get('pageSize') # 每页数据量
-        self.sortField = params.get('sortField') # 排序字段
-        self.sortOrder = params.get('sortOrder') # 排序方式
-        self.startDate = params.get('startDate') # 开始时间
-        self.endDate = params.get('endDate') # 结束时间
-        self.keywords = params.get('keywords') # 模糊查询关键字,搞不懂传的是什么，字段？查询内容？
-        self.all = all # 是否查询所有数据
+        self.query_params = params  # 查询参数
+        self.page = params.get('page')  # 当前页码
+        self.pageSize = params.get('pageSize')  # 每页数据量
+        self.sortField = params.get('sortField')  # 排序字段
+        self.sortOrder = params.get('sortOrder')  # 排序方式
+        self.startDate = params.get('startDate')  # 开始时间
+        self.endDate = params.get('endDate')  # 结束时间
+        self.keywords = params.get('keywords')  # 模糊查询关键字,搞不懂传的是什么，字段？查询内容？
+        self.all = all  # 是否查询所有数据
 
     async def paginate_query(
-        self, query: Select, session: AsyncSession
+            self, query: Select, session: AsyncSession
     ) -> Optional[Iterable]:
         """
         返回分页数据

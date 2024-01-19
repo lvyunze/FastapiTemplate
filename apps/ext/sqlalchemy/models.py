@@ -1,7 +1,5 @@
 # coding: utf-8
-from datetime import datetime
-
-from sqlalchemy import Column, DateTime, ForeignKey, Index, JSON, String, Text, text
+from sqlalchemy import Column, DateTime, ForeignKey, Index, JSON, String, text
 from sqlalchemy.dialects.mysql import CHAR, INTEGER, TINYINT
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -129,8 +127,8 @@ class User(Base):
     systheme_id = Column(String(255), comment='描述')
     create_user = Column(CHAR(36), nullable=False, comment='创建人的id')
     update_user = Column(CHAR(36), nullable=False, comment='创建人的id 、每次更新的是自动更新该字段')
-    create_time = Column(DateTime, default=datetime.utcnow, nullable=False, comment='创建时间')
-    update_time = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False,
+    create_time = Column(DateTime, nullable=False, comment='创建时间')
+    update_time = Column(DateTime, nullable=False,
                          comment='更新时间')
 
 

@@ -1,5 +1,10 @@
+from datetime import datetime
+
+from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from apps.utils.security import get_current_user, get_current_user_id
 
 
 async def getRelationshipData(session: AsyncSession, source, target, relation=None):
@@ -34,3 +39,21 @@ async def getRelationshipData(session: AsyncSession, source, target, relation=No
         objects = query_result.scalars()
         data = list(objects)
         return data
+
+
+def setDefaultData(model, user_id):
+    """
+    设置默认创建人、更新人、创建时间、更新时间
+    Args:
+        model: 模型
+        user: 用户
+    Returns: 模型
+    """
+    # 如果没有id，说明是新增
+    if not model.id:
+        model.create_user = user_id
+        model.create_time = datetime.now()
+    model.update_user = user_id
+    model.update_time = datetime.now()
+
+    return model

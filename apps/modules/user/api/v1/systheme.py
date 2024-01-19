@@ -5,11 +5,14 @@ from apps.ext.sqlalchemy import db_connect
 from apps.ext.sqlalchemy.models import Systheme
 from apps.modules.user.schemas import GetPageParams
 from apps.modules.user.schemas.systheme import GetSystheme, SysthemeSer
+from apps.utils.crud import setDefaultData
 from apps.utils.pagination import Pagination
 from apps.utils.response import Resp
+from apps.utils.security import get_current_user_id, get_current_user
 
 # 创建路由
 router = APIRouter(tags=["主题管理"])
+
 
 @router.post('/addOne', summary="添加主题", response_model=Resp)
 async def addOne(_systheme: GetSystheme):
@@ -25,8 +28,9 @@ async def addOne(_systheme: GetSystheme):
 
         return Resp(message="添加主题成功")
 
-@router.post('/deleteById/<string:id>', summary="删除主题", response_model=Resp)
-async def deleteById(id):
+
+@router.post('/deleteById/{id}', summary="删除主题", response_model=Resp)
+async def deleteById(id: str):
     """
     删除主题
     Args:
@@ -39,8 +43,9 @@ async def deleteById(id):
 
         return Resp(message="删除主题成功")
 
-@router.post('/updateById/<string:id>', summary="更新主题", response_model=Resp)
-async def updateById(id,_systheme: GetSystheme):
+
+@router.post('/updateById/{id}', summary="更新主题", response_model=Resp)
+async def updateById(id: str, _systheme: GetSystheme, current_user_id: str = Depends(get_current_user_id)):
     """
     更新主题
     Args:
@@ -50,14 +55,16 @@ async def updateById(id,_systheme: GetSystheme):
     async with db_connect.async_session() as session:
         systheme = Systheme(**_systheme.dict())
         systheme.id = id
+        setDefaultData(systheme, current_user_id)
         # 更新systheme
         await session.merge(systheme)
         systhemeSer = SysthemeSer.dump(systheme)
 
         return Resp(data=systhemeSer, message="更新主题成功")
 
-@router.get('/findById/<string:id>', summary="根据id查询主题", response_model=Resp)
-async def findById(id):
+
+@router.get('/findById/{id}', summary="根据id查询主题", response_model=Resp)
+async def findById(id: str):
     """
     根据id查询主题
     Args:
@@ -71,8 +78,9 @@ async def findById(id):
 
         return Resp(data=systhemeSer, message="查询主题成功")
 
+
 @router.get('/findList', summary="分页查询主题列表", response_model=Resp)
-async def findList(params: GetPageParams=Depends()):
+async def findList(params: GetPageParams = Depends()):
     """
     分页查询主题列表
     Returns: 主题列表
@@ -89,8 +97,9 @@ async def findList(params: GetPageParams=Depends()):
         }
         return Resp(data=data, message="分页查询主题列表成功")
 
+
 @router.get('/findAll', summary="查询所有主题", response_model=Resp)
-async def findAll(params: GetPageParams=Depends()):
+async def findAll(params: GetPageParams = Depends()):
     """
     查询所有主题
     Returns: 所有主题

@@ -6,13 +6,16 @@ from apps.ext.sqlalchemy import db_connect
 from apps.ext.sqlalchemy.models import Dict
 from apps.modules.user.schemas import GetPageParams, GetParams
 from apps.modules.user.schemas.dict import GetDict, DictSer
+from apps.utils.crud import setDefaultData
 from apps.utils.pagination import Pagination
 from apps.utils.response import Resp
+from apps.utils.security import get_current_user_id
 
 router = APIRouter(tags=["字典管理"])
 
+
 @router.post('/addOne', summary="添加字典", response_model=Resp)
-async def addOne(_dict: GetDict):
+async def addOne(_dict: GetDict, current_user_id: str = Depends(get_current_user_id)):
     """
     添加字典
     Args:
@@ -21,12 +24,14 @@ async def addOne(_dict: GetDict):
     """
     async with db_connect.async_session() as session:
         _dict = Dict(**_dict.dict())
+        setDefaultData(_dict, current_user_id)
         session.add(_dict)
 
         return Resp(message="添加字典信息成功")
 
-@router.post('/deleteById/<string:id>', summary="删除字典", response_model=Resp)
-async def deleteById(id):
+
+@router.post('/deleteById/{id}', summary="删除字典", response_model=Resp)
+async def deleteById(id: str):
     """
     删除字典
     Args:
@@ -40,8 +45,8 @@ async def deleteById(id):
         return Resp(message="删除字典信息成功")
 
 
-@router.post('/updateById/<string:id>', summary="更新字典", response_model=Resp)
-async def updateById(id, _dict: GetDict):
+@router.post('/updateById/{id}', summary="更新字典", response_model=Resp)
+async def updateById(id: str, _dict: GetDict, current_user_id: str = Depends(get_current_user_id)):
     """
     更新字典
     Args:
@@ -51,12 +56,14 @@ async def updateById(id, _dict: GetDict):
     async with db_connect.async_session() as session:
         _dict = Dict(**_dict.dict())
         _dict.id = id
+        setDefaultData(_dict, current_user_id)
         session.merge(_dict)
 
         return Resp(message="更新字典信息成功")
 
-@router.get('/findById/<string:id>', summary="查询字典", response_model=Resp)
-async def findById(id):
+
+@router.get('/findById/{id}', summary="查询字典", response_model=Resp)
+async def findById(id: str):
     """
     查询字典
     Args:
@@ -69,8 +76,9 @@ async def findById(id):
 
         return Resp(data=dictSer, message="字典信息查询成功")
 
+
 @router.get('/findList', summary="分页查询字典列表", response_model=Resp)
-async def findList(params: GetPageParams=Depends()):
+async def findList(params: GetPageParams = Depends()):
     """
     分页查询字典列表
     Args:
@@ -85,13 +93,14 @@ async def findList(params: GetPageParams=Depends()):
         total = page_data['total']
 
         data = {
-             "dictList": dictList,
-             "total": total
+            "dictList": dictList,
+            "total": total
         }
         return Resp(data=data, message="获取字典信息列表成功")
 
+
 @router.get('/findAll', summary="查询所有字典", response_model=Resp)
-async def findAll(params: GetParams=Depends()):
+async def findAll(params: GetParams = Depends()):
     """
     查询所有字典
     Returns: 所有字典

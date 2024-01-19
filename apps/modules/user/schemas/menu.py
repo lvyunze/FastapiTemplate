@@ -5,8 +5,16 @@ from apps.ext.sqlalchemy.models import Menu
 from apps.modules.user.schemas.atom import AtomSer
 from apps.utils.serializer import model2schema
 
+class GetMenu(model2schema(Menu, exclude=["id"])):
+    @validator("update_time", allow_reuse=True)
+    def update_time(cls, v):
+        return str(v)
 
-class MenuSer(model2schema(Menu, exclude=["id"])):
+    @validator("create_time", allow_reuse=True)
+    def create_time(cls, v):
+        return str(v)
+
+class MenuSer(model2schema(Menu)):
     children: List['MenuSer'] = Field(default_factory=list)
     atomList: List[AtomSer] = Field(default_factory=list)
     @validator("update_time", allow_reuse=True)

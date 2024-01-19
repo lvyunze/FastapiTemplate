@@ -1,6 +1,6 @@
 import re
 from decimal import Decimal
-from typing import Type, Container, Optional, overload, Annotated
+from typing import Type, Container, Optional
 
 from pydantic import BaseModel, create_model, BaseConfig, Field
 from sqlalchemy import inspect
@@ -10,13 +10,6 @@ from sqlalchemy.orm import ColumnProperty
 def dump(cls, objs, many=False, **kwargs):
     """
     用于序列化数据
-    Args:
-        cls: SQLAlchemy模型类，用于创建模型实例。
-        objs: SQLAlchemy模型对象或对象列表，需要被序列化的数据。
-        many: 布尔值，如果为True，表示`objs`是一个对象列表。如果为False，表示`objs`是一个单一对象。
-        **kwargs: 额外的参数，将被传递给`dict()`方法，用于控制序列化的行为。
-    Returns:
-        如果`many`为True，返回一个字典列表。如果`many`为False，返回一个字典
     """
     if not objs:
         return [] if many is True else {}
@@ -97,7 +90,7 @@ def model2schema(
             # 设置字段
             # fields[name] = (python_type, default)
             # 设置字段，将字段名转换成小驼峰
-            fields[name] = (python_type,Field(default, alias=underscore_to_camelcase(name)))
+            fields[name] = (python_type, Field(default, alias=underscore_to_camelcase(name)))
 
     # 创建BaseModel子类
     model = create_model(db_model.__name__, __config__=config, **fields)

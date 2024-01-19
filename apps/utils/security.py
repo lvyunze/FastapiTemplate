@@ -22,9 +22,11 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="user/docsLogin")
 class TokenData(BaseModel):
     username: Union[str, None] = None
 
+
 class Token(BaseModel):
     access_token: str
     token_type: str
+
 
 class User(BaseModel):
     id: Union[str, None] = None
@@ -70,7 +72,7 @@ async def get_user(session, username: str):
     return user
 
 
-async def authenticate_user(session,username: str, password: str):
+async def authenticate_user(session, username: str, password: str):
     """
     验证用户
     :param fake_db:
@@ -78,7 +80,7 @@ async def authenticate_user(session,username: str, password: str):
     :param password:
     :return:
     """
-    user = await get_user(session,username)
+    user = await get_user(session, username)
     if not user:
         return False
     if not verify_password(password, user.password):
@@ -102,6 +104,7 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     """
     token获取用户
@@ -115,7 +118,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        print("payload ==> ",payload)
+        print("payload ==> ", payload)
         username: str = payload.get("sub")
         print("username ==> ", username)
         if username is None:
@@ -127,7 +130,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         user = await get_user(session, username=token_data.username)
         if user is None:
             raise credentials_exception
+        user = session.merge(user)
         return user
+
 
 async def get_current_active_user(current_user: User = Depends(get_current_user)):
     """
@@ -135,13 +140,17 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     :param current_user:
     :return:
     """
-    if current_user.disabled:
+    if not current_user:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
-@property
+
 async def get_current_user_id(current_user: User = Depends(get_current_user)):
-    return current_user.id
+    current_user = await current_user
+    if not current_user:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return str(current_user.id)
+
 
 if __name__ == '__main__':
     print(get_password_hash("123456"))
