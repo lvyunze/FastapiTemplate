@@ -8,15 +8,13 @@ from starlette import status
 
 from apps.ext.sqlalchemy.models import User, Systheme, Menu, RoleMenu, Role, UserRole, Atom, MenuAtom
 from apps.modules.user.schemas import GetPageParams, GetParams
-from apps.modules.user.schemas.menu import MenuSer
-from apps.modules.user.schemas.role import RoleSer
-from apps.modules.user.schemas.systheme import SysthemeSer
-from apps.modules.user.schemas.user import UserForm, UserListSer, AuthDetails, GetUser, UserRegister
+from apps.modules.user.schemas.user import UserForm, UserListSer, AuthDetails, GetUser, UserRegister, RoleSer, \
+    SysthemeSer, MenuSer
 from apps.ext.sqlalchemy import db_connect
 from apps.modules.user.schemas.user import UserSer
 from fastapi import Depends
 
-from apps.utils.crud import getRelationshipData, setDefaultData
+from apps.utils.crud import get_relationship_data, set_default_data
 from apps.utils.pagination import Pagination
 from apps.utils.response import Resp
 from apps.utils.security import authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token, get_current_user, \
@@ -64,7 +62,7 @@ async def register(_user: UserRegister):
     async with db_connect.async_session() as session:
         user = User(**_user)
         user.password = get_password_hash(user.password)
-        setDefaultData(user, '')
+        set_default_data(user, '')
         session.add(user)
         await session.commit()
         await session.refresh(user)
@@ -107,7 +105,7 @@ async def info(current_user_id: User = Depends(get_current_user_id)):
         user = await session.get(User, current_user_id)
         userInfo = UserSer.dump(user)
         # 查询主题信息
-        systheme = await getRelationshipData(session, user, Systheme)
+        systheme = await get_relationship_data(session, user, Systheme)
         systhemeInfo = SysthemeSer.dump(systheme)
         # 查询菜单信息
         query = select(Menu).join(RoleMenu, RoleMenu.menu_id == Menu.id).join(Role, Role.id == RoleMenu.role_id) \
@@ -140,7 +138,7 @@ async def addOne(_user: GetUser, current_user_id: User = Depends(get_current_use
         user = User(**_user)
         user.password = get_password_hash(user.password)
         # 设置默认创建人、更新人、创建时间、更新时间
-        setDefaultData(user, current_user_id)
+        set_default_data(user, current_user_id)
 
         session.add(user)
         await session.commit()
@@ -187,7 +185,7 @@ async def updateById(id: str, _user: UserForm, current_user_id: str = Depends(ge
     roleIds = _user.pop("roleIds")
     async with db_connect.async_session() as session:
         user = User(**_user)
-        setDefaultData(user, current_user_id)
+        set_default_data(user, current_user_id)
         # 更新用户
         await session.execute(select(User).where(User.id == id).update(_user))
         # 删除用户角色关联表
@@ -214,10 +212,10 @@ async def findById(id: str, current_user_id: str = Depends(get_current_user_id))
         user = await session.get(User, id)
         userSer = UserListSer.dump(user)
         # 查询用户角色信息
-        roleList = await getRelationshipData(session, user, Role, UserRole)
+        roleList = await get_relationship_data(session, user, Role, UserRole)
         userSer.roleIds = [each.id for each in roleList]
         userSer.roleList = RoleSer.dump(roleList, many=True)
-        userSer.systhemeInfo = SysthemeSer.dump(await getRelationshipData(session, user, Systheme))
+        userSer.systhemeInfo = SysthemeSer.dump(await get_relationship_data(session, user, Systheme))
 
         return Resp(data=userSer, message="获取用户信息成功")
 
@@ -234,16 +232,15 @@ async def findList(params: GetPageParams = Depends(), current_user_id: str = Dep
         userSerList = []
         total = page_data['total']
         relations = params.relations.split(',') if params.relations else []
-        if len(relations) > 0:
-            for user in userList:
-                userSer = UserListSer.dump(user)
-                if 'role' in relations or '*' in relations:
-                    roleList = await getRelationshipData(session, user, Role, UserRole)
-                    userSer.roleIds = [role.id for role in roleList]
-                    userSer.roleList = RoleSer.dump(roleList, many=True)
-                if 'systheme' in relations or '*' in relations:
-                    userSer.systhemeInfo = SysthemeSer.dump(await getRelationshipData(session, user, Systheme))
-                userSerList.append(userSer)
+        for user in userList:
+            userSer = UserListSer.dump(user)
+            if 'role' in relations or '*' in relations:
+                roleList = await get_relationship_data(session, user, Role, UserRole)
+                userSer.roleIds = [role.id for role in roleList]
+                userSer.roleList = RoleSer.dump(roleList, many=True)
+            if 'systheme' in relations or '*' in relations:
+                userSer.systhemeInfo = SysthemeSer.dump(await get_relationship_data(session, user, Systheme))
+            userSerList.append(userSer)
 
         data = {
             "userList": userSerList,
@@ -263,16 +260,15 @@ async def findAll(params: GetParams = Depends(), current_user_id: str = Depends(
         userList = page_data['list']
         userSerList = []
         relations = params.relations.split(',') if params.relations else []
-        if len(relations) > 0:
-            for user in userList:
-                userSer = UserListSer.dump(user)
-                if 'role' in relations or '*' in relations:
-                    roleList = await getRelationshipData(session, user, Role, UserRole)
-                    userSer.roleIds = [role.id for role in roleList]
-                    userSer.roleList = RoleSer.dump(roleList, many=True)
-                if 'systheme' in relations or '*' in relations:
-                    userSer.systhemeInfo = SysthemeSer.dump(await getRelationshipData(session, user, Systheme))
-                userSerList.append(userSer)
+        for user in userList:
+            userSer = UserListSer.dump(user)
+            if 'role' in relations or '*' in relations:
+                roleList = await get_relationship_data(session, user, Role, UserRole)
+                userSer.roleIds = [role.id for role in roleList]
+                userSer.roleList = RoleSer.dump(roleList, many=True)
+            if 'systheme' in relations or '*' in relations:
+                userSer.systhemeInfo = SysthemeSer.dump(await get_relationship_data(session, user, Systheme))
+            userSerList.append(userSer)
 
         data = {
             "userList": userSerList
@@ -294,6 +290,6 @@ async def getMenuTree(session: AsyncSession, menuList, parentId):
         # 递归获取子级菜单，序列化后的子级菜单
         menu.children = await getMenuTree(session, menuList, menu.id)
         # 获取菜单下的按钮
-        menu.atomList = await getRelationshipData(session, menu, Atom, MenuAtom)
+        menu.atomList = await get_relationship_data(session, menu, Atom, MenuAtom)
     # 返回菜单树和序列化后的菜单树
     return tree
